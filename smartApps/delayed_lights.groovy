@@ -24,7 +24,13 @@ preferences {
         }
     }
 
-    page(name: "pageTwo", title: "Devices to Control", install: true, uninstall: false)
+    page(name: "pageTwo", title: "Devices to Control", nextPage: "pageThree", install: false, uninstall: false)
+    
+    page(name: "pageThree", title: "Advanced Settings", install: true, uninstall: false) {
+        section("Run only in these modes") {
+            input "runModes", "mode", title: "Modes", multiple: true, required: false
+        }
+    }
 }
 
 def pageTwo() {
@@ -54,15 +60,17 @@ def initialize() {
 
 def motionHandler(evt) {
     log.debug "motionHandler called: $evt"
-    if (evt.value == "active") {
+    if (!runModes || (runModes && location.mode in runModes)){
+      if (evt.value == "active") {
         LinkedHashSet lights = settings.keySet().findAll { it.contains("light") }
         for(int i = 0; i < lights.size(); i++){
-            log.debug "turring on light$i"
-            settings["light$i"].on()
-            pause(1000 * delay)
+          log.debug "turring on light$i"
+          settings["light$i"].on()
+          pause(1000 * delay)
         }
-    } else if (evt.value == "inactive") {
-        runIn(60 * minutes, checkMotion)
+        } else if (evt.value == "inactive") {
+          runIn(60 * minutes, checkMotion)
+        }
     }
 }
 
