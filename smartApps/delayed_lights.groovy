@@ -24,13 +24,12 @@ preferences {
         }
     }
 
-    page(name: "pageTwo", title: "Devices to Control", nextPage: "pageThree", install: false, uninstall: false)
-    
-    page(name: "pageThree", title: "Advanced Settings", install: true, uninstall: false) {
-        section("Run only in these modes") {
-            input "runModes", "mode", title: "Modes", multiple: true, required: false
-        }
-    }
+    page(name: "pageTwo", title: "Devices to Control", install: true, uninstall: false)
+    // page(name: "pageTwo", title: "Devices to Control", nextPage: "pageThree", install: true, uninstall: false)
+    //
+    // page(name: "pageThree", title: "Advanced Settings", install: true, uninstall: false) {
+
+    // }
 }
 
 def pageTwo() {
@@ -39,6 +38,10 @@ def pageTwo() {
             for(int i = 0; i < numLights; i++) {
                 input "light$i", "capability.switch", title: "Light $i", required: true, multiple: false
             }
+        }
+        section("Advanced Settings"){}
+        section("Don't run in these modes") {
+            input "noRunModes", "mode", title: "Modes", multiple: true, required: false
         }
     }
 }
@@ -60,31 +63,40 @@ def initialize() {
 
 def motionHandler(evt) {
     log.debug "motionHandler called: $evt"
-    if (!runModes || (runModes && location.mode in runModes)){
-      if (evt.value == "active") {
-        LinkedHashSet lights = settings.keySet().findAll { it.contains("light") }
-        for(int i = 0; i < lights.size(); i++){
-          log.debug "turring on light$i"
-          settings["light$i"].on()
-          pause(1000 * delay)
-        }
+    def shouldRun = true
+
+    // This section will handle all advanced options and determine if we need to run
+    if (runModes && location.mode in noRunModes){
+        shouldRun = false
+    }
+
+    // If the advanced options are met, then run
+    if (shouldRun){
+        if (evt.value == "active") {
+            LinkedHashSet lights = settings.keySet().findAll { it.contains("light") }
+            for(int i = 0; i < lights.size(); i++){
+                log.debug "turring on light$i"
+                settings["light$i"].on()
+                pause(1000 * delay)
+            }
         } else if (evt.value == "inactive") {
-          runIn(60 * minutes, checkMotion)
+            // runIn takes seconds a a param so convert
+            runIn(60 * minutes, checkMotion)
         }
     }
 }
 
 def checkMotion() {
-  log.debug "In checkMotion scheduled method"
-  def motionState = motionSensor.currentState("motion")
-  if (motionState.value == "inactive") {
-        // get the time elapsed between now and when the motion reported inactive
+    log.debug "In checkMotion scheduled method"
+    def motionState = motionSensor.currentState("motion")
+    if (motionState.value == "inactive") {
+        // Get the time elapsed between now and when the motion reported inactive
         def elapsed = now() - motionState.date.time
 
-        // elapsed time is in milliseconds, so the threshold must be converted to milliseconds too
+        // Elapsed time is in milliseconds, so the threshold must be converted to milliseconds too
         def threshold = 1000 * 60 * minutes
         if (elapsed >= threshold) {
-            log.debug "Motion has stayed inactive long enough since last check ($elapsed ms):  turning off lights"
+            log.debug "Motion has stayed inactive long enough since last check ($elapsed ms): turning off lights"
             LinkedHashSet lights = settings.keySet().findAll { it.contains("light") }
             for(int i = 0; i < lights.size(); i++){
                 log.debug "turring off light$i"
@@ -92,7 +104,7 @@ def checkMotion() {
                 pause(1000 * delay)
             }
         } else {
-            log.debug "Motion has not stayed inactive long enough since last check ($elapsed ms):  doing nothing"
+            log.debug "Motion has not stayed inactive long enough since last check ($elapsed ms): doing nothing"
         }
     } else {
         // Motion active; just log it and do nothing
