@@ -25,11 +25,6 @@ preferences {
     }
 
     page(name: "pageTwo", title: "Devices to Control", install: true, uninstall: false)
-    // page(name: "pageTwo", title: "Devices to Control", nextPage: "pageThree", install: true, uninstall: false)
-    //
-    // page(name: "pageThree", title: "Advanced Settings", install: true, uninstall: false) {
-
-    // }
 }
 
 def pageTwo() {
