@@ -43,6 +43,9 @@ def pageTwo() {
         section("Don't run in these modes") {
             input "noRunModes", "mode", title: "Modes", multiple: true, required: false
         }
+        section("Don't run after these times") {
+            input "sunNoRun", "enum", title: "Sunrise/Sunset", multiple: true, required: false, options:["sunrise", "sunset"]
+        }
     }
 }
 
@@ -65,12 +68,34 @@ def motionHandler(evt) {
     log.debug "motionHandler called: $evt"
     def shouldRun = true
 
+    //
     // This section will handle all advanced options and determine if we need to run
-    if (runModes && location.mode in noRunModes){
+    //
+
+    // Determine if should run based off hub mode
+    if (noRunModes && location.mode in noRunModes){
+        log.info("Hub mode set to $location.mode and no run modes are $noRunModes . Not running")
         shouldRun = false
     }
 
+    // Determine if should run based of sunrise/sunset
+    if (sunNoRun && shouldRun) {
+        def sunriestAndSunset = getSunriseAndSunset()
+        def motionState = motionSensor.currentState("motion")
+        def isAfterSunrise = motionState.date > sunriestAndSunset.sunrise && motionState.date < sunriestAndSunset.sunset
+        if ("sunrise" in sunNoRun && isAfterSunrise) {
+            log.info("App set not to run after sunrise. Will not run")
+            shouldRun = false
+        }
+        if ("sunset" in sunNoRun && !isAfterSunrise) {
+            log.info("App set not to run after sunset. Will not run")
+            shouldRun = false
+        }
+    }
+
+    //
     // If the advanced options are met, then run
+    //
     if (shouldRun){
         if (evt.value == "active") {
             LinkedHashSet lights = settings.keySet().findAll { it.contains("light") }
