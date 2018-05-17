@@ -10,8 +10,9 @@ definition(
 
 preferences {
     page(name: "pageOne", title: "Initial Setup", nextPage: "pageTwo", install: false, uninstall: true) {
-      	section("Select a motion sensor") {
-      		input "motionSensor", "capability.motionSensor", title: "Which Motion Sensor?", multiple: false, required: true
+        // TODO: Make this an enum
+        section("Select a motion sensor") {
+      		input "sensorOne", "capability.motionSensor", title: "First Sensor", multiple: false, required: true
       	}
         section("Select light delay") {
               input "delay", "number", title: "Seconds", multiple: false, required: true
@@ -21,6 +22,10 @@ preferences {
         }
         section("Select the number of lights you want to control") {
             input "numLights", "number", title: "Number of Lights", required: true
+        }
+        // TODO: Make this an enum
+        section("Select a door sensor on the other end") {
+            input "sensorTwo", "capability.doorControl", title: "Second Sensor", multiple: false, required: false
         }
     }
 
@@ -56,7 +61,10 @@ def updated() {
 }
 
 def initialize() {
-    subscribe(motionSensor, "motion", motionHandler)
+    subscribe(sensorOne, "motion", motionHandler)
+    if (sensorTwo) {
+        // subscribe(sensorTwo, "door.opening", motionHandler)
+    }
 }
 
 def motionHandler(evt) {
@@ -76,7 +84,7 @@ def motionHandler(evt) {
     // Determine if should run based of sunrise/sunset
     if (sunNoRun && shouldRun) {
         def sunriestAndSunset = getSunriseAndSunset()
-        def motionState = motionSensor.currentState("motion")
+        def motionState = sensorOne.currentState("motion")
         def isAfterSunrise = motionState.date > sunriestAndSunset.sunrise && motionState.date < sunriestAndSunset.sunset
         if ("sunrise" in sunNoRun && isAfterSunrise) {
             log.info("App set not to run after sunrise. Will not run")
@@ -108,7 +116,7 @@ def motionHandler(evt) {
 
 def checkMotion() {
     log.debug "In checkMotion scheduled method"
-    def motionState = motionSensor.currentState("motion")
+    def motionState = sensorOne.currentState("motion")
     if (motionState.value == "inactive") {
         // Get the time elapsed between now and when the motion reported inactive
         def elapsed = now() - motionState.date.time
