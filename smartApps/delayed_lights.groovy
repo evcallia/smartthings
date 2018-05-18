@@ -63,7 +63,7 @@ def updated() {
 def initialize() {
     subscribe(sensorOne, "motion", motionHandler)
     if (sensorTwo) {
-        // subscribe(sensorTwo, "door.opening", motionHandler)
+        // subscribe(sensorTwo, "door.opening", doorHandler)
     }
 }
 
@@ -138,4 +138,8 @@ def checkMotion() {
         // Motion active; just log it and do nothing
         log.debug "Motion is active, do nothing and wait for inactive"
     }
+}
+
+def doorHandler(evt) {
+    
 }
