@@ -17,16 +17,16 @@ preferences {
         section("Select light delay") {
               input "delay", "number", title: "Seconds", multiple: false, required: true
           }
-        section("Select how long after motion stops to turn lights off") {
+        section("Select how long after activity stops to turn lights off") {
               input "minutes", "number", required: true, title: "Minutes", multiple: false
         }
         section("Select the number of lights you want to control") {
             input "numLights", "number", title: "Number of Lights", required: true
         }
         // TODO: Make this an enum
-        section("Select a door sensor on the other end") {
-            input "sensorTwo", "capability.doorControl", title: "Second Sensor", multiple: false, required: false
-        }
+        // section("Select a door sensor on the other end") {
+        //     input "sensorTwo", "capability.doorControl", title: "Second Sensor", multiple: false, required: false
+        // }
     }
 
     page(name: "pageTwo", title: "Devices to Control", install: true, uninstall: false)
@@ -39,12 +39,17 @@ def pageTwo() {
                 input "light$i", "capability.switch", title: "Light $i", required: true, multiple: false
             }
         }
-        section("Advanced Settings"){}
+
+        section("Advanced Settings") {}
+
         section("Don't run in these modes") {
             input "noRunModes", "mode", title: "Modes", multiple: true, required: false
         }
+
         section("Don't run after these times") {
-            input "sunNoRun", "enum", title: "Sunrise/Sunset", multiple: true, required: false, options:["sunrise", "sunset"]
+            input "sunNoRun", "enum", title: "Sunrise/Sunset", multiple: true, required: false, options: ["sunrise", "sunset"]
+            input "sunOffset", "string", title: "Offset in the form HH:MM", multiple: false, required: false
+            input "sunOffsetDirection", "enum", title: "Before or after sunset/sunrise", multiple: true, required: false, options: ["before", "after"]
         }
     }
 }
@@ -62,9 +67,9 @@ def updated() {
 
 def initialize() {
     subscribe(sensorOne, "motion", motionHandler)
-    if (sensorTwo) {
-        // subscribe(sensorTwo, "door.opening", doorHandler)
-    }
+    // if (sensorTwo) {
+    //     // subscribe(sensorTwo, "door.opening", doorHandler)
+    // }
 }
 
 def motionHandler(evt) {
@@ -83,9 +88,23 @@ def motionHandler(evt) {
 
     // Determine if should run based of sunrise/sunset
     if (sunNoRun && shouldRun) {
-        def sunriestAndSunset = getSunriseAndSunset()
+        // Get offset info if any
+        def offset = sunOffset
+        if (!offset) {
+            offset = "00:00"
+        }
+        if (sunOffsetDirection && sunOffsetDirection == "before") {
+            offset = "-" + offset
+        } else {
+            offset = "+" + offset
+        }
+
+        // Get sunrise/set with offset and compare to activation time
+        log.info("Check sunset with offet of $offset")
+        def sunriseAndSunset = getSunriseAndSunset(sunsetOffset: offset)
+        log.info("sunrise: $sunriseAndSunset.sunrise sunset: $sunriseAndSunset.sunset")
         def motionState = sensorOne.currentState("motion")
-        def isAfterSunrise = motionState.date > sunriestAndSunset.sunrise && motionState.date < sunriestAndSunset.sunset
+        def isAfterSunrise = timeOfDayIsBetween(sunriseAndSunset.sunrise, sunriseAndSunset.sunset, new Date(), location.timeZone)
         if ("sunrise" in sunNoRun && isAfterSunrise) {
             log.info("App set not to run after sunrise. Will not run")
             shouldRun = false
@@ -140,6 +159,6 @@ def checkMotion() {
     }
 }
 
-def doorHandler(evt) {
-    
-}
+// def doorHandler(evt) {
+//
+// }
