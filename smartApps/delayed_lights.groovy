@@ -120,12 +120,19 @@ def motionHandler(evt) {
     //
     if (shouldRun){
         if (evt.value == "active") {
-            LinkedHashSet lights = settings.keySet().findAll { it.contains("light") }
-            for(int i = 0; i < lights.size(); i++){
-                log.debug "turring on light$i"
-                settings["light$i"].on()
-                pause(1000 * delay)
+            // Check to see if the lights are already on. If it is then we don't need to run
+            def lightState = settings["light0"].currentState("switch")
+            if (lightState.value == "off") {
+                LinkedHashSet lights = settings.keySet().findAll { it.contains("light") }
+                for(int i = 0; i < lights.size(); i++){
+                    log.debug "turring on light$i"
+                    settings["light$i"].on()
+                    pause(1000 * delay)
+                }
+            } else {
+                log.info("Lights are already on. Will not turn on again")
             }
+
         } else if (evt.value == "inactive") {
             // runIn takes seconds a a param so convert
             runIn(60 * minutes, checkMotion)
